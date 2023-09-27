@@ -93,6 +93,8 @@ def read_img_rcan(env, path, size=None):
     return: Numpy float32, HWC, BGR, [0,1]"""
     if env is None:  # img
         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+        if img.ndim == 2:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     else:
         img = _read_img_lmdb(env, path, size)
     img = img.astype(np.float32)

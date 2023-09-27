@@ -16,6 +16,7 @@ from utils import util
 from data import util as ut
 import os.path as osp
 import os
+import math
 
 logger = logging.getLogger('base')
 
@@ -45,7 +46,7 @@ class ClassSR_Model(BaseModel):
         else:
             self.netG = DataParallel(self.netG)
         # print network
-        # self.print_network()
+        self.print_network()
         self.load()
 
         if self.is_train:
@@ -148,9 +149,13 @@ class ClassSR_Model(BaseModel):
             self.var_L = cv2.cvtColor(self.var_L, cv2.COLOR_GRAY2BGR)
         if self.real_H.ndim == 2 :
             self.real_H = cv2.cvtColor(self.real_H, cv2.COLOR_GRAY2BGR)
+        
+        self.real_H = ut.modcrop(self.real_H, self.scale)
 
-        lr_list, num_h, num_w, h, w = self.crop_cpu(self.var_L, self.patch_size, self.step)
-        gt_list=self.crop_cpu(self.real_H,self.patch_size*4,self.step*4)[0]
+        temp_L, temp_H = self.padding_crop(self.var_L, self.real_H, self.patch_size, self.step)
+
+        lr_list, num_h, num_w, h, w = self.crop_cpu(temp_L, self.patch_size, self.step)
+        gt_list = self.crop_cpu(temp_H, self.patch_size*4, self.step*4)[0]
         sr_list = []
         index = 0
 
@@ -198,9 +203,14 @@ class ClassSR_Model(BaseModel):
             index += 1
 
         self.fake_H = self.combine(sr_list, num_h, num_w, h, w, self.patch_size, self.step)
+        
+        h_gt, w_gt, _ = self.real_H.shape
+        assert self.fake_H.shape[0] >= h_gt or self.fake_H.shape[1] >= w_gt, "Error"
+        self.fake_H = self.fake_H[0:h_gt, 0:w_gt, :]
+
         if self.opt['add_mask']:
             self.fake_H_mask = self.combine_addmask(sr_list, num_h, num_w, h, w, self.patch_size, self.step,type_res)
-        self.real_H = self.real_H[0:h * self.scale, 0:w * self.scale, :]
+        # self.real_H = self.real_H[0:h * self.scale, 0:w * self.scale, :]
         self.num_res = self.print_res(type_res)
         self.psnr_res=[psnr_type1,psnr_type2,psnr_type3]
 
@@ -254,6 +264,26 @@ class ClassSR_Model(BaseModel):
 
     def save(self, iter_label):
         self.save_network(self.netG, 'G', iter_label)
+
+    def padding_crop(self, img_L, img_H, crop_sz, step):
+        h, w, c = img_L.shape
+        h_pad = math.ceil((h - crop_sz) / step) * step + crop_sz
+        w_pad = math.ceil((w - crop_sz) / step) * step + crop_sz
+
+        temp_L = np.zeros([h_pad, w_pad, c], dtype=np.uint8)
+        temp_H = np.zeros([h_pad * self.scale, w_pad * self.scale, c], dtype=np.uint8)
+
+        # padding with the border pixels
+        temp_L[:h, :w, :] = img_L
+        temp_L[:h, w:, :] = temp_L[:h, w-1:w, :]
+        temp_L[h:, :, :] = temp_L[h-1:h, :, :]
+        
+        hh, wh, _ = img_H.shape
+        temp_H[:hh, :wh:, :] = img_H
+        temp_H[:hh, wh:, :] = temp_H[:hh, wh-1:wh, :]
+        temp_H[hh:, :, :] = temp_H[hh-1:hh, :, :]
+        
+        return temp_L, temp_H
 
     def crop_cpu(self,img,crop_sz,step):
         n_channels = len(img.shape)

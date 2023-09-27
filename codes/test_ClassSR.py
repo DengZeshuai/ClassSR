@@ -96,9 +96,9 @@ for test_loader in test_loaders:
                 gt_img_y = bgr2ycbcr(gt_img / 255., only_y=True)
 
                 psnr_y = util.calculate_psnr(sr_img_y * 255, gt_img_y * 255)
-                #ssim_y = util.calculate_ssim(sr_img_y * 255, gt_img_y * 255)
+                ssim_y = util.calculate_ssim(sr_img_y * 255, gt_img_y * 255)
                 test_results['psnr_y'].append(psnr_y)
-                #test_results['ssim_y'].append(ssim_y)
+                test_results['ssim_y'].append(ssim_y)
                 # logger.info(
                 #     '{:20s} - PSNR: {:.6f} dB; SSIM: {:.6f}; PSNR_Y: {:.6f} dB; SSIM_Y: {:.6f}.'.
                 #     format(img_name, psnr, ssim, psnr_y, ssim_y))
