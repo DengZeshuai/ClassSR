@@ -1,0 +1,1 @@
+python test_ClassSR_cpu_time.py -opt options/test/test_ClassSR_RCAN_infer.yml

@@ -17,6 +17,7 @@ from data import util as ut
 import os.path as osp
 import os
 import math
+import time
 
 logger = logging.getLogger('base')
 
@@ -26,6 +27,7 @@ class ClassSR_Model(BaseModel):
         super(ClassSR_Model, self).__init__(opt)
 
         self.patch_size = int(opt["patch_size"])
+        self.LQ_size = int(opt["LQ_size"])
         self.step = int(opt["step"])
         self.scale = int(opt["scale"])
         self.name = opt['name']
@@ -152,10 +154,21 @@ class ClassSR_Model(BaseModel):
         
         self.real_H = ut.modcrop(self.real_H, self.scale)
 
+        # self.var_L, self.real_H = self.center_crop(self.var_L, self.real_H, self.LQ_size)
+
+        processing_start = time.time()
         temp_L, temp_H = self.padding_crop(self.var_L, self.real_H, self.patch_size, self.step)
 
         lr_list, num_h, num_w, h, w = self.crop_cpu(temp_L, self.patch_size, self.step)
         gt_list = self.crop_cpu(temp_H, self.patch_size*4, self.step*4)[0]
+        # logger.info('temp_L shape: {}, temp_H shape: {}'.format(temp_L.shape, temp_H.shape))
+        # logger.info('Length of lr_list: {}, Length of temp_H: {}'.format(len(lr_list), len(gt_list)))
+        processing_time = time.time() - processing_start
+        
+        to_tensor_time = 0
+        inference_time = 0
+        postprecessing_time = 0
+
         sr_list = []
         index = 0
 
@@ -163,8 +176,9 @@ class ClassSR_Model(BaseModel):
         psnr_type2 = 0
         psnr_type3 = 0
 
-        for LR_img,GT_img in zip(lr_list,gt_list):
-
+        for idx, (LR_img, GT_img) in enumerate(zip(lr_list,gt_list)):
+            to_tensor_start = time.time()
+            
             if self.which_model=='classSR_3class_rcan':
                 img = LR_img.astype(np.float32)
             else:
@@ -177,14 +191,24 @@ class ClassSR_Model(BaseModel):
             img = img[:, :, [2, 1, 0]]
             img = torch.from_numpy(np.ascontiguousarray(np.transpose(img, (2, 0, 1)))).float()[None, ...].to(
                 self.device)
+            
+            to_tensor_time += time.time() - to_tensor_start
+            
+            inference_start = time.time()
             with torch.no_grad():
                 srt, type = self.netG(img, False)
 
+            inference_time += time.time() - inference_start
+            print(inference_time)
+
+            postprecessing_start = time.time()
             if self.which_model == 'classSR_3class_rcan':
                 sr_img = util.tensor2img(srt.detach()[0].float().cpu(), out_type=np.uint8, min_max=(0, 255))
             else:
                 sr_img = util.tensor2img(srt.detach()[0].float().cpu())
             sr_list.append(sr_img)
+
+            postprecessing_time += time.time() - postprecessing_start
 
             if index == 0:
                 type_res = type
@@ -202,7 +226,9 @@ class ClassSR_Model(BaseModel):
 
             index += 1
 
+        postprecessing_start = time.time()
         self.fake_H = self.combine(sr_list, num_h, num_w, h, w, self.patch_size, self.step)
+        postprecessing_time += time.time() - postprecessing_start
         
         h_gt, w_gt, _ = self.real_H.shape
         assert self.fake_H.shape[0] >= h_gt or self.fake_H.shape[1] >= w_gt, "Error"
@@ -214,8 +240,9 @@ class ClassSR_Model(BaseModel):
         self.num_res = self.print_res(type_res)
         self.psnr_res=[psnr_type1,psnr_type2,psnr_type3]
 
-
         self.netG.train()
+
+        return processing_time, to_tensor_time, inference_time, postprecessing_time
 
     def get_current_log(self):
         return self.log_dict
@@ -312,6 +339,25 @@ class ClassSR_Model(BaseModel):
         h=x + crop_sz
         w=y + crop_sz
         return lr_list,num_h, num_w,h,w
+    
+    def center_crop(self, img_LQ, img_GT, LQ_size=96):
+        # crop center patch for infer 
+        H, W, C = img_LQ.shape
+        
+        assert H > LQ_size and W > LQ_size
+        center_h = (H - LQ_size) // 2 
+        center_w = (W - LQ_size) // 2 
+        img_LQ = img_LQ[center_h:center_h + LQ_size, center_w:center_w + LQ_size, :]
+        
+        H, W, C = img_GT.shape
+        GT_size = LQ_size * self.scale
+        assert H > GT_size and W > GT_size
+        center_h = (H - GT_size) // 2 
+        center_w = (W - GT_size) // 2
+        img_GT = img_GT[center_h:center_h + GT_size, center_w:center_w + GT_size, :]
+
+        return img_LQ, img_GT
+    
 
     def combine(self,sr_list,num_h, num_w,h,w,patch_size,step):
         index=0

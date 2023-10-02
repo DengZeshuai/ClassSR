@@ -1,4 +1,4 @@
-name: test_ClassSR_RCAN_count_params
+name: test_ClassSR_RCAN_cpu_time
 suffix: ~  # add suffix to saved images
 # model: ClassSR
 model: ClassSR_benchmark
@@ -7,34 +7,41 @@ scale: 4
 patch_size: 32
 step: 28
 crop_border: ~  # crop border when evaluation. If None(~), crop the scale pixels
-gpu_ids: [4]
+gpu_ids: ~
 add_mask: False
+LQ_size: 96
 
 datasets:
 
-  test_1:
-    name: Set5
-    mode: LQGT_rcan
-    dataroot_GT: /mnt/cephfs/home/dengzeshuai/data/sr/benchmark/Set5/HR
-    dataroot_LQ: /mnt/cephfs/home/dengzeshuai/data/sr/benchmark/Set5/LR_bicubic/X4
+  # test_1:
+    # name: Set5
+    # mode: LQGT_infer
+    # dataroot_GT: /mnt/cephfs/home/dengzeshuai/data/sr/benchmark/Set5/HR
+    # dataroot_LQ: /mnt/cephfs/home/dengzeshuai/data/sr/benchmark/Set5/LR_bicubic/X4
   # test_2:
   #   name: Set14
-  #   mode: LQGT_rcan
+  #   mode: LQGT_infer
   #   dataroot_GT: /mnt/cephfs/home/dengzeshuai/data/sr/benchmark/Set14/HR
   #   dataroot_LQ: /mnt/cephfs/home/dengzeshuai/data/sr/benchmark/Set14/LR_bicubic/X4
   # test_3:
   #   name: B100
   #   mode: LQGT_rcan
-  #   dataroot_GT: /mnt/cephfs/home/dengzeshuai/data/sr/benchmark/B100/HR
-  #   dataroot_LQ: /mnt/cephfs/home/dengzeshuai/data/sr/benchmark/B100/LR_bicubic/X4
-  # test_4:
-  #   name: Urban100
-  #   mode: LQGT_rcan
-  #   dataroot_GT: /mnt/cephfs/home/dengzeshuai/data/sr/benchmark/Urban100/HR
-  #   dataroot_LQ: /mnt/cephfs/home/dengzeshuai/data/sr/benchmark/Urban100/LR_bicubic/X4
+  #   dataroot_GT: /home/dengzeshuai/datasets/benchmark/B100/HR
+  #   dataroot_LQ: /home/dengzeshuai/datasets/benchmark/B100/LR_bicubic/X4
+  #   GT_size: 384
+
+  test_4:
+    name: Urban100
+    mode: LQGT_infer
+    # dataroot_GT: /home/dengzeshuai/datasets/benchmark/Urban100/HR
+    # dataroot_LQ: /home/dengzeshuai/datasets/benchmark/Urban100/LR_bicubic/X4
+    dataroot_GT: G:\\datasets\\benchmark\\Urban100\\HR
+    dataroot_LQ: G:\\datasets\\benchmark\\Urban100\\LR_bicubic\X4
+    GT_size: 384
+
   # test_5:
   #   name: Manga109
-  #   mode: LQGT_rcan
+  #   mode: LQGT_infer
   #   dataroot_GT: /mnt/cephfs/home/dengzeshuai/data/sr/benchmark/Manga109/HR
   #   dataroot_LQ: /mnt/cephfs/home/dengzeshuai/data/sr/benchmark/Manga109/LR_bicubic/X4
 
@@ -49,7 +56,8 @@ network_G:
 #### path
 path:
   # pretrain_model_G: /mnt/cephfs/home/dengzeshuai/pretrained_models/ClassSR/ClassSR_RCAN.pth
-  pretrain_model_G: /mnt/e/pretrained_model/ClassSR/ClassSR_RCAN.pth
+  # pretrain_model_G: /mnt/e/pretrained_model/ClassSR/ClassSR_RCAN.pth
+  pretrain_model_G: E:\\pretrained_model\\ClassSR\\ClassSR_RCAN.pth
   pretrain_model_classifier: ~
   pretrain_model_G_branch1: ~
   pretrain_model_G_branch2: ~

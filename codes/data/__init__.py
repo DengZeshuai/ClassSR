@@ -34,6 +34,8 @@ def create_dataset(dataset_opt):
         from data.LQGT_dataset import LQGTDataset as D
     elif mode == 'LQGT_rcan':
         from data.LQGT_rcan_dataset import LQGTDataset_rcan as D
+    elif mode == 'LQGT_infer':
+        from data.LQGT_infer_dataset import LQGTDataset_infer as D
     elif mode == 'LQ_label':
         from data.LQ_label_dataset import LQ_label_Dataset as D
     # datasets for video restoration
